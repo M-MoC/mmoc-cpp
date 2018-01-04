@@ -25,7 +25,7 @@ std::runtime_error thrown at line 12 of program.cpp: this is where you describe 
 
 #include <string>
 
-#define mmocTHROW(exception,description) throw exception(std::string("\n" #exception \
+#define mmocTHROW(Exception,description) throw Exception(std::string("\n" #Exception \
 	" thrown at line ")+std::to_string(__LINE__)+" of "+__FILE__+": "+description+"\n")
 
 #endif
