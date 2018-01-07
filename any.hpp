@@ -1,8 +1,6 @@
 #ifndef mmocANY_HPP
 #define mmocANY_HPP
 
-//WORK IN PROGRESS
-
 #include <stdexcept>
 #include <memory>
 #include <typeindex>
@@ -15,7 +13,7 @@
 	{ \
 		ObjectType* obj=reinterpret_cast<ObjectType*>(mmoc_arg__obj); \
 		const NewValueType* new_val=reinterpret_cast<const NewValueType*>(mmoc_arg__new_val);
-		//[code for set function would go here, then followed by a closing brace]
+		//[code for set function would go here, followed by "mmocEND" to end the function]
 
 #define mmocGETFUNC(ObjectType,T) \
 	[](char* mmoc_arg__ret_by_val,const void** mmoc_arg__ret_ptr_ptr,void* mmoc_arg__obj)->void \
@@ -23,32 +21,36 @@
 		const ObjectType* obj=reinterpret_cast<const ObjectType*>(mmoc_arg__obj); \
 		T* const ret_by_val=reinterpret_cast<T*>(mmoc_arg__ret_by_val); \
 		const T*& ret_ptr=*reinterpret_cast<const T**>(mmoc_arg__ret_ptr_ptr);
-		//[code for get function would go here, then followed by a closing brace]
-
-//so you can use commas within macro arguments
-#define mmocSEP ,
+		//[code for get function would go here, followed by "mmocEND" to end the function]
 
 //so that code editors don't get confused by a seeming lack of an open bracket
 #define mmocEND }
 
+//so that you can use commas within macro arguments
+#define mmocSEP ,
+
 namespace mmoc
 {
-
-struct Object; //forward declaration (is it really needed?)
 
 //exceptions
 struct TypeConflictException : std::runtime_error
 	{ TypeConflictException(std::string what_in) : runtime_error(what_in) {} };
-struct NullAccessException : std::runtime_error
-	{ NullAccessException(std::string what_in) : runtime_error(what_in) {} };
+
+struct AttrList;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Any class which can either be used to store any type of data or as a "proxy" to some external
-// data which it does not own, and then to manipulate said data in certain ways in a typesafe way
-// regardless of whether the Any is acting as a proxy to or is storing its own data.
-struct Any
+// Any class which can either be used to store any type of data or to act as a proxy to external
+// data which it does not own. Data can be retrieved or assigned via get_by_ref(), get_by_cref(),
+// get_by_val(), set() and assign_to() (with the lattermost accepting an Any and set() accepting
+// const T& where T is the correct type of data).
+// It uses the small object optimisation (meaning that when owning data, it will embed the data
+// within itself if it fits to avoid a heap allocation).
+// Note that this acts as a replacement for std::any which simultaneously further extends
+// the capability of the Any by providing the ability to act as a proxy.
+// Also note that the contents of or the data being proxied by a given Any must not be const.
+class Any
 {
-	friend mmoc::Object;
+	friend mmoc::AttrList;
 	
 	struct RTTI //Run-Time Type Information
 	{
@@ -59,11 +61,6 @@ struct Any
 		RTTI(std::type_index type_id_in,bool owns_data_in)
 			: type_id(type_id_in), owns_data(owns_data_in) {}
 	};
-public: //private:
-	//instance storing the corresponding RTTI instance which also encompasses
-	//additional things specific to whether the Any owns its data or is a proxy
-	//to external data (see get_RTTI() for details on how the RTTI instance is
-	//filled depending on type and whether the Any owns its own data or not)
 	RTTI* rtti;
 	struct Proxy
 	{
@@ -78,7 +75,24 @@ public: //private:
 		Proxy proxy;
 	};
 	Data data;
-//public:
+	
+public:
+	 /*
+	 * The below is a function to get the RTTI instance for a type "T" and based on
+	 * whether it should be responsible for owning data (and thus managing its lifetime)
+	 * or merely acting as a proxy to it (with said distinction signified by the template
+	 * parameter "bool OwnsData").
+	 *
+	 * It always returns the address of the corresponding RTTI instance; if said instance does not
+	 * yet exist (if it is the first time entering that specific instantiation of the function)
+	 * it will fill in the data for the RTTI instance accordingly and then return the
+	 * address of the instance.
+	 * 
+	 * The function's mechanism relies on the fact that static variables are specific
+	 * to the template instantiation of the function rather than the broader function.
+	 * 
+	 * The address for a given RTTI instance will never change within the program's lifetime.
+	*/
 	template<typename T,bool OwnsData> static RTTI* get_RTTI()
 	{
 		static std::unique_ptr<RTTI> rtti(new RTTI(std::type_index(typeid(T)),OwnsData));
@@ -119,29 +133,17 @@ public: //private:
 		else rtti->delete_func=[](Any& to_delete){};
 		
 		//prevent redundant repeated initialisations of the RTTI instance ("rtti") and
-		//return its address of it (by first dereferencing it and then getting its address
+		//return its address (by first dereferencing it and then getting its address
 		//so that you get a return value of RTTI* rather than std::unique_ptr<RTTI>)
 		first_time=false;
 		return &*rtti;
 	}
-	//default constructor only provided for use by containers for which their
-	//type need be default constructible (it should not be used) and for use in
-	//the static Any creation functions to create a "blank" (uninitialised) Any
+	//default constructor only provided for use by containers for which
+	//their type need be default constructible (it should not be used)
 	Any() : rtti(nullptr) {}
 	//destructor needs to call destructor of any stored objects (if any)
 	~Any()
 		{ rtti->delete_func(*this); }
-	
-	Any& assign_to(const Any& new_val)
-	{
-		if(rtti->type_id!=new_val.rtti->type_id)
-			mmocTHROW( TypeConflictException,
-				"assigning Any of type "+mmoc::signature(rtti->type_id)+
-				" to Any of type "+mmoc::signature(new_val.rtti->type_id)
-				);
-		rtti->assign_func(*this,new_val);
-		return *this;
-	}
 	
 	//Any creation functions
 	template<typename T> static Any create_from_data(const T& data_in)
@@ -158,42 +160,28 @@ public: //private:
 		Any to_return;
 		to_return.rtti=get_RTTI<T,false>();
 		to_return.data.proxy.object=data_to_proxy;
-		to_return.data.proxy.set_func=[](void* obj,const void* new_val)
-			{ *reinterpret_cast<T*>(obj)=*reinterpret_cast<const T*>(new_val); }
+		to_return.data.proxy.set_func=[](void* object,const void* new_val)
+			{ *reinterpret_cast<T*>(object)=*reinterpret_cast<const T*>(new_val); }
 			;
-		to_return.data.proxy.get_func=[](char* ret_by_val,const void** ret_ptr_ptr,void* obj)
-			{ *ret_ptr_ptr=obj; }
+		to_return.data.proxy.get_func=[](char* ret_by_val,const void** ret_ptr_ptr,void* object)
+			{ *ret_ptr_ptr=object; }
 			;
 		return to_return;
 	}
 	template<typename T,typename Object,typename SetFunc,typename GetFunc>
-	static Any create_proxy(Object* object,SetFunc set_func_in,GetFunc get_func_in)
+	static Any create_proxy(Object* object_in,SetFunc set_func_in,GetFunc get_func_in)
 	{
 		Any to_return;
 		to_return.rtti=get_RTTI<T,false>();
-		to_return.data.proxy.object=object;
+		to_return.data.proxy.object=reinterpret_cast<void*>(object_in);
 		to_return.data.proxy.set_func=set_func_in;
 		to_return.data.proxy.get_func=get_func_in;
 		return to_return;
 	}
 	
-	//good to use for all cases but requires inputting an argument to recieve the return value
-	template<typename T> void get(T& ret_ref) const
-	{
-		if(std::type_index(typeid(T))!=rtti->type_id)
-			mmocTHROW( TypeConflictException,
-				"getting Any as invalid type "+mmoc::signature(std::type_index(typeid(T)))+
-				" when it is of type "+mmoc::signature(rtti->type_id)
-				);
-		if(!rtti->owns_data)
-		{
-			void* temp_ptr=reinterpret_cast<void*>(&ret_ref);
-			data.proxy.get_func(reinterpret_cast<char*>(&ret_ref),&temp_ptr,data.proxy.object);
-		} else if(sizeof(T)<=sizeof(Proxy))
-			ret_ref=*reinterpret_cast<const T*>(data.embedded_data);
-		else ret_ref=*reinterpret_cast<const T*>(data.data_ptr);
-	}
-	//only use if Any is not a proxy which returns by value
+	//functions for getting and setting data
+	
+	//only use get_by_ref() if Any is not a proxy which returns by value
 	template<typename T> const T& get_by_ref() const
 	{
 		if(std::type_index(typeid(T))!=rtti->type_id)
@@ -203,15 +191,22 @@ public: //private:
 				);
 		if(!rtti->owns_data)
 		{
-			void* temp_ptr;
+			const void* temp_ptr=nullptr;
 			data.proxy.get_func(nullptr,&temp_ptr,data.proxy.object);
 			return *reinterpret_cast<const T*>(temp_ptr);
 		} else if(sizeof(T)<=sizeof(Proxy))
 			return *reinterpret_cast<const T*>(data.embedded_data);
 		else return *reinterpret_cast<const T*>(data.data_ptr);
 	}
-	//same as above except returns by const value instead of const reference
-	template<typename T> const T get_by_val() const
+	template<typename T> inline const T& get_by_cref() const
+		{ return get_by_ref<T>(); }
+	template<typename T> inline T& get_by_ref()
+		{ return *const_cast<T*>(&get_by_cref<T>()); }
+	//use this if Any contains a proxy which returns by value or contains
+	//data which does not take up significant space in memory (e.g an int)
+	//(it can be used for any type of Any, but using it for Any's with large
+	//types is a bit silly; use get_by_ref() for that)
+	template<typename T> T get_by_val() const
 	{
 		if(std::type_index(typeid(T))!=rtti->type_id)
 			mmocTHROW( TypeConflictException,
@@ -221,9 +216,9 @@ public: //private:
 		if(!rtti->owns_data)
 		{
 			char temp_val[sizeof(T)<=64 ? sizeof(T) : 0];
-			void* temp_ptr=temp_val;
+			const void* temp_ptr=temp_val;
 			data.proxy.get_func(temp_val,&temp_ptr,data.proxy.object);
-			return *reinterpret_cast<T*>(temp_val);
+			return *reinterpret_cast<const T*>(temp_ptr);
 		} else if(sizeof(T)<=sizeof(Proxy))
 			return *reinterpret_cast<const T*>(data.embedded_data);
 		else return *reinterpret_cast<const T*>(data.data_ptr);
@@ -241,6 +236,18 @@ public: //private:
 				*reinterpret_cast<T*>(data.embedded_data)=new_val;
 			else *reinterpret_cast<T*>(data.data_ptr)=new_val;
 		else data.proxy.set_func(data.proxy.object,&new_val);
+	}
+	//for assigning one Any to another regardless of their types
+	//but on the condition that their types are the same
+	Any& assign_to(const Any& new_val)
+	{
+		if(rtti->type_id!=new_val.rtti->type_id)
+			mmocTHROW( TypeConflictException,
+				"assigning Any of type "+mmoc::signature(rtti->type_id)+
+				" to Any of type "+mmoc::signature(new_val.rtti->type_id)
+				);
+		rtti->assign_func(*this,new_val);
+		return *this;
 	}
 	
 	//informational functions
