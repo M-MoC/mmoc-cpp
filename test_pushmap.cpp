@@ -1,7 +1,4 @@
 #include <iostream>
-#include <iterator>
-#include <cmath>
-#include <stdint.h>
 #include "object.hpp"
 
 //alignment:
