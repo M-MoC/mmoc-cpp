@@ -77,22 +77,21 @@ class Any
 	Data data;
 	
 public:
-	 /*
-	 * The below is a function to get the RTTI instance for a type "T" and based on
-	 * whether it should be responsible for owning data (and thus managing its lifetime)
-	 * or merely acting as a proxy to it (with said distinction signified by the template
-	 * parameter "bool OwnsData").
-	 *
-	 * It always returns the address of the corresponding RTTI instance; if said instance does not
-	 * yet exist (if it is the first time entering that specific instantiation of the function)
-	 * it will fill in the data for the RTTI instance accordingly and then return the
-	 * address of the instance.
-	 * 
-	 * The function's mechanism relies on the fact that static variables are specific
-	 * to the template instantiation of the function rather than the broader function.
-	 * 
-	 * The address for a given RTTI instance will never change within the program's lifetime.
-	*/
+	
+	// The below is a function to get the RTTI instance for a type "T" and based on
+	// whether it should be responsible for owning data (and thus managing its lifetime)
+	// or merely acting as a proxy to it (with said distinction signified by the template
+	// parameter "bool OwnsData").
+	//
+	// It always returns the address of the corresponding RTTI instance; if said instance does not
+	// yet exist (if it is the first time entering that specific instantiation of the function)
+	// it will fill in the data for the RTTI instance accordingly and then return the
+	// address of the instance.
+	//
+	// The function's mechanism relies on the fact that static variables are specific
+	// to the template instantiation of the function rather than the broader function.
+	// 
+	// The address for a given RTTI instance will never change within the program's lifetime.
 	template<typename T,bool OwnsData> static RTTI* get_RTTI()
 	{
 		static std::unique_ptr<RTTI> rtti(new RTTI(std::type_index(typeid(T)),OwnsData));
@@ -125,6 +124,7 @@ public:
 		if(OwnsData)
 			rtti->delete_func=[](Any& to_delete)
 			{
+				//is this really safe? must investigate
 				reinterpret_cast<T*>( sizeof(T)<=sizeof(Proxy) ?
 						to_delete.data.embedded_data : to_delete.data.data_ptr
 					) -> ~T()
