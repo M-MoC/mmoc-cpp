@@ -2,19 +2,19 @@
 #include "object.hpp"
 
 //alignment:
-// <-1 = left (only pad spaces on right; keep to_pad on left)
-// -1 = centre-left (centre but on left if not able to be in centre perfectly)
-// 0 or 1 = centre-right (centre but on right if not able to be in centre perfectly)
-// >1 = right (only pad spaces on the left; keep to_pad on right)
-std::string pad(const std::string& to_pad,int pad_size,char alignment = 2)
+// <-1 = left (only pad on right; keep to_pad on left)
+// -1 = centre-left (centre but on centremost-left if not able to be perfectly in centre)
+// 1 = centre-right (centre but on centremost-right if not able to be perfectly in centre)
+// 0 or >1 = right (only pad on the left; keep to_pad on right)
+std::string pad(const std::string& to_pad,int pad_size,char alignment = 0)
 {
 	int pad_spaces=pad_size-to_pad.size();
-	if(pad_size<-1)
+	if(alignment<-1)
 		return to_pad+std::string(pad_spaces,' ');
-	else if(pad_size==-1)
-		return std::string(pad_spaces/2+pad_spaces%2,' ')+to_pad+std::string(pad_spaces/2,' ');
-	else if(pad_size==0 || pad_size==1)
+	else if(alignment==-1)
 		return std::string(pad_spaces/2,' ')+to_pad+std::string(pad_spaces/2+pad_spaces%2,' ');
+	else if(alignment==1)
+		return std::string(pad_spaces/2+pad_spaces%2,' ')+to_pad+std::string(pad_spaces/2,' ');
 	else return std::string(pad_spaces,' ')+to_pad;
 }
 template<typename T> bool modulast(T val,T divisor)
