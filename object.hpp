@@ -69,10 +69,8 @@ public:
 		{ return push_map.end(); }
 	const_iterator cend() const
 		{ return push_map.cend(); }
-	//we use empty maps (meaning the mapping is default) to signify that for each attribute
-	//that is named [a], it will "push" exactly and only to the attribute named [a] (on the
-	//condition that attribute [a] exists both in the 'pusher' and the 'pushee' of course)
-	bool is_default() const
+	
+	bool empty() const
 		{ return push_map.empty(); }
 	
 	std::string operator[] (const std::string& key) const
