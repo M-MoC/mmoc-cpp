@@ -79,17 +79,17 @@ int main()
 			mmocGETFUNC(BigThing,int64_t) *ret_by_val=obj->get_component(); mmocEND
 		);
 	
-	//checking .get_by_val() an .get_by_ref() (and .get_by_cref() by extension)
+	//checking .get_by_val() and .get_by_cref()
 	std::cout
 		<<a_int_1.get_by_val<int>()<<" = 1\n"
-		<<a_int_2.get_by_ref<int>()<<" = 2\n"
+		<<a_int_2.get_by_cref<int>()<<" = 2\n"
 		<<a_big_1.get_by_val<BigThing>().get_component()<<" = 15\n"
-		<<a_big_2.get_by_ref<BigThing>().get_component()<<" = 20\n"
+		<<a_big_2.get_by_cref<BigThing>().get_component()<<" = 20\n"
 		<<a_autoproxy_1.get_by_val<int>()<<" = 11\n"
-		<<a_autoproxy_2.get_by_ref<int>()<<" = 22\n"
+		<<a_autoproxy_2.get_by_cref<int>()<<" = 22\n"
 		<<a_customproxy_1.get_by_val<int64_t>()<<" = -15\n"
 		<<a_customproxy_2.get_by_val<int64_t>()<<" = -20\n"
-		<<a_big_3.get_by_ref<BigThing>().get_component()<<" = 25\n"
+		<<a_big_3.get_by_cref<BigThing>().get_component()<<" = 25\n"
 		<<a_customproxy_3.get_by_val<int64_t>()<<" = 25\n"
 		"\n"
 		;
@@ -174,7 +174,7 @@ int main()
 	std::cout
 		<<"a_int_1.get_type_name() = "<<a_int_1.get_type_name()
 			<<", owns_data = "<<a_int_1.owns_data()<<"\n"
-		<<"a_int_2.get_type_name()"<<a_int_2.get_type_name()
+		<<"a_int_2.get_type_name() = "<<a_int_2.get_type_name()
 			<<", owns_data = "<<a_int_2.owns_data()<<"\n"
 		<<"a_big_1.get_type_name() = "<<a_big_1.get_type_name()
 			<<", owns_data = "<<a_big_1.owns_data()<<"\n"

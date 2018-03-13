@@ -32,7 +32,6 @@
 namespace mmoc
 {
 
-//exceptions
 struct TypeConflictException : std::runtime_error
 	{ TypeConflictException(std::string what_in) : runtime_error(what_in) {} };
 
@@ -184,10 +183,10 @@ public:
 	//only use get_by_ref() if Any is not a proxy which returns by value
 	template<typename T> const T& get_by_ref() const
 	{
-		if(std::type_index(typeid(T))!=rtti->type_id)
+		if(!is<T>())
 			mmocTHROW( TypeConflictException,
-				"getting Any as invalid type "+mmoc::signature(std::type_index(typeid(T)))+
-				" when it is of type "+mmoc::signature(rtti->type_id)
+				"getting Any as invalid type "+signature<T>()+
+				" when it is of type "+get_type_name()
 				);
 		if(!rtti->owns_data)
 		{
@@ -208,10 +207,10 @@ public:
 	//types is a bit silly; use get_by_ref() for that)
 	template<typename T> T get_by_val() const
 	{
-		if(std::type_index(typeid(T))!=rtti->type_id)
+		if(!is<T>())
 			mmocTHROW( TypeConflictException,
-				"getting Any as invalid type "+mmoc::signature(std::type_index(typeid(T)))+
-				" when it is of type "+mmoc::signature(rtti->type_id)
+				"getting Any as invalid type "+signature<T>()+
+				" when it is of type "+get_type_name()
 				);
 		if(!rtti->owns_data)
 		{
@@ -226,10 +225,10 @@ public:
 	//this works as you'd expect
 	template<typename T> void set(const T& new_val)
 	{
-		if(std::type_index(typeid(T))!=rtti->type_id)
+		if(!is<T>())
 			mmocTHROW( TypeConflictException,
-				"setting Any as invalid type "+mmoc::signature(std::type_index(typeid(T)))+
-				" when it is of type "+mmoc::signature(rtti->type_id)
+				"setting Any as invalid type "+signature<T>()+
+				" when it is of type "+get_type_name()
 				);
 		if(rtti->owns_data)
 			if(sizeof(T)<=sizeof(Proxy))
@@ -237,16 +236,17 @@ public:
 			else *reinterpret_cast<T*>(data.data_ptr)=new_val;
 		else data.proxy.set_func(data.proxy.object,&new_val);
 	}
-	//for assigning one Any to another regardless of their types
-	//but on the condition that their types are the same
-	Any& assign_to(const Any& new_val)
+	//for assigning one Any to another such that they may be any type at any
+	//time (the type is not fixed at compile-time) but on the condition that
+	//their types match (else a TypeConflictException is thrown)
+	Any& assign_to(const Any& other)
 	{
-		if(rtti->type_id!=new_val.rtti->type_id)
+		if(get_type_index()!=other.get_type_index())
 			mmocTHROW( TypeConflictException,
-				"assigning Any of type "+mmoc::signature(rtti->type_id)+
-				" to Any of type "+mmoc::signature(new_val.rtti->type_id)
+				"assigning Any of type "+get_type_name()+
+				" to Any of type "+other.get_type_name()
 				);
-		rtti->assign_func(*this,new_val);
+		rtti->assign_func(*this,other);
 		return *this;
 	}
 	
