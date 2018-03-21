@@ -2,7 +2,9 @@ RUBBER DUCKING
 
 1: A given Object has a set of attributes, each with a name (in the form of an std::string) and a type (identified by an std::type_index stored in the RTTI instance pointed to by the mmoc::Any associated with a given attribute name in a given Object). (This implies "std::unordered_map<std::string,mmoc::Any> attrs;".)
 2: There is a need for defaults for Object's such that the user doesn't need to specify the same set of defaults every time they want to create and define a new Object.
-3: There must be objects specifically with the purpose of setting/applying defaults; Default's.
+3: There must be things specifically with the purpose of setting/applying defaults; Default's.
 4: There is a large mapping from the name of each default to all the attributes it sets in what contexts. As such, there is also DefaultReciever's.
 5: This large mapping can be expanded and modified by the user if they wish/if they find it insufficient or inconvenient.
 5.Q: This seems potentially problematic; must investigate.
+6: A given name can cause multiple names to default based on its value in various different ways. (Therefore each name it maps to has its own associated function, where the function pointer is null if the mapping just does a regular .assign_to().)
+7: For a given name, multiple names may map to it. If this occurs, the order of those mappings in the Default determines which is prominent over the other. This implies a structure like "std::vector<Defaulting>", where Defaulting is the type "std::pair< std::string, std::vector<  std::pair<std::string,void(*)(void*)>  > >". (This example structure seems overcomplicated however.)
