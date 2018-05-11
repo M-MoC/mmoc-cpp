@@ -1,3 +1,4 @@
+#include <string>
 #include <SFML/Graphics.hpp>
 #include "maths_utils.hpp"
 
@@ -5,11 +6,9 @@ int main()
 {
 	float fps=60.f,pixels_per_unit=50.f;
 	sf::ContextSettings opengl_context;
+	std::string base_title="interactive maths_utils test demo";
 	opengl_context.antialiasingLevel=4;
-	sf::RenderWindow window(
-		sf::VideoMode(800,600),"interactive maths_utils test demo",
-		sf::Style::Default,opengl_context
-		);
+	sf::RenderWindow window(sf::VideoMode(800,600),base_title,sf::Style::Default,opengl_context);
 	
 	sf::View view(sf::Vector2f(),sf::Vector2f(800,600));
 	window.setView(view);
@@ -80,28 +79,25 @@ int main()
 		
 		window.clear(sf::Color::Black);
 		
-		//drawing convex poly & unit circle
+		//for convenience - mouse_pos needs to be relative to centre of game world, which
+		//due to the view, is actually in the middle of the window not the top-left corner
+		sf::Vector2f mouse_pos( sf::Mouse::getPosition(window)-sf::Vector2i(window.getSize())/2 );
+		
+		//setting convex_poly's points to correspond internally with the transform coordsys applied
+		//to the internal points of static_convex_poly
 		for(int i=0;i<static_convex_poly.getPointCount();++i)
 			convex_poly.setPoint( i, sf::Vector2f(
 				coordsys*sf::Vector2<double>(static_convex_poly.getPoint(i))
 				));
-		if( [&]() //returns whether the cursor is inside the transformed convex_poly
-			{
-				unsigned n=convex_poly.getPointCount();
-				for(int i=n-1;i>=0;--i)
-					if(!mmoc::point_on_left(
-						sf::Vector2f(sf::Mouse::getPosition(window)
-							-sf::Vector2i(window.getSize()/(unsigned)2)
-						),
-						convex_poly.getTransform()*convex_poly.getPoint(i),
-						convex_poly.getTransform()*convex_poly.getPoint((i+1)%n)
-						)) return false;
-				return true;
-			}()
-			) convex_poly.setFillColor(sf::Color(31,63,31));
+		//making convex poly highlight in green when mouse hovers over it
+		std::vector<sf::Vector2f> pure_poly;
+		for(int i=0;i<static_convex_poly.getPointCount();++i)
+			pure_poly.push_back(convex_poly.getTransform()*convex_poly.getPoint(i));
+		if(mmoc::in_convex_polygon<float,false>(mouse_pos,pure_poly))
+			convex_poly.setFillColor(sf::Color(31,63,31));
 		else convex_poly.setFillColor(sf::Color(31,31,31));
-		window.draw(convex_poly);
 		
+		window.draw(convex_poly);
 		window.draw(unit_circle);
 		
 		//drawing transformed points
@@ -112,6 +108,18 @@ int main()
 			window.draw(point);
 			point.setPosition(temp);
 		};
+		
+		//set title of window to give info for what side of the x and y axes of coordsys
+		//the cursor is currently on
+		std::string new_title=base_title+" - ";
+		//testing point_on_left()
+		if(mmoc::point_on_left(mouse_pos,sf::Vector2f(),sf::Vector2f(coordsys.x_basis())))
+			new_title+="cursor on left of x axis; ";
+		else new_title+="cursor on right of x axis; ";
+		if(mmoc::point_on_left(mouse_pos,sf::Vector2f(),sf::Vector2f(coordsys.y_basis())))
+			new_title+="cursor on left of y axis";
+		else new_title+="cursor on right of y axis";
+		window.setTitle(new_title);
 		
 		//y basis
 		mmoc::CoordSys2D<double> x_basis_is_y_basis(coordsys.y_basis());

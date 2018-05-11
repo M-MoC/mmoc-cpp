@@ -1,15 +1,47 @@
-#ifndef mmocBASIC_MATH_HPP
-#define mmocBASIC_MATH_HPP
+#ifndef mmocMATHS_UTILS_HPP
+#define mmocMATHS_UTILS_HPP
 
 #include <cmath>
+#include <vector>
 #include <SFML/System/Vector2.hpp>
 
 namespace mmoc
 {
 
+template<typename T> inline sqr_len(sf::Vector2<T> vec)
+	{ return vec.x*vec.x+vec.y*vec.y; }
+
 //checks if point p is on left of (but not on) line drawn from l_a to l_b extended endlessly
 template<typename T> bool point_on_left(sf::Vector2<T> p,sf::Vector2<T> l_a,sf::Vector2<T> l_b)
 	{ return (l_b.x-l_a.x)*(p.y-l_a.y) - (l_b.y-l_a.y)*(p.x-l_a.x) > 0; }
+
+template<typename T,bool CW>
+bool in_convex_polygon(sf::Vector2<T> point,const std::vector<sf::Vector2<T>>& convex_poly)
+{
+	if(CW)
+	{
+		for(int i=0;i<convex_poly.size()-1;++i)
+			if(point_on_left(point,convex_poly[i],convex_poly[i+1]))
+				return false;
+		if(point_on_left(point,convex_poly[convex_poly.size()-1],convex_poly[0]))
+			return false;
+		return true;
+	} else
+	{
+		for(int i=0;i<convex_poly.size()-1;++i)
+			if(!point_on_left(point,convex_poly[i],convex_poly[i+1]))
+				return false;
+		if(!point_on_left(point,convex_poly[convex_poly.size()-1],convex_poly[0]))
+			return false;
+		return true;
+	}
+}
+
+template<typename T> bool in_circle(sf::Vector2<T> point,sf::Vector2<T> circle_pos,T radius)
+{
+	sf::Vector2<T> pos_diff=point-circle_pos;
+	return pos_diff.x*pos_diff.x+pos_diff.y*pos_diff.y<=radius;
+}
 
 //can store only proper rotations and scalings; no mirrors (a.k.a improper rotations), skews, etc.
 template<typename T> struct CoordSys2D
