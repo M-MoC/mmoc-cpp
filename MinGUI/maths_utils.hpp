@@ -11,9 +11,11 @@ namespace mmoc
 template<typename T> inline sqr_len(sf::Vector2<T> vec)
 	{ return vec.x*vec.x+vec.y*vec.y; }
 
-//checks if point p is on left of (but not on) line drawn from l_a to l_b extended endlessly
+//these check if point p is on left of or right of (but not on) line defined from l_a to l_b
 template<typename T> bool point_on_left(sf::Vector2<T> p,sf::Vector2<T> l_a,sf::Vector2<T> l_b)
-	{ return (l_b.x-l_a.x)*(p.y-l_a.y) - (l_b.y-l_a.y)*(p.x-l_a.x) > 0; }
+	{ return (l_b.x-l_a.x)*(p.y-l_a.y) - (l_b.y-l_a.y)*(p.x-l_a.x) < 0; }
+template<typename T> bool point_on_right(sf::Vector2<T> p,sf::Vector2<T> l_a,sf::Vector2<T> l_b)
+	{ return (l_b.x-l_a.x)*(p.y-l_a.y) - (l_b.y-l_a.y)*(p.x-l_a.x) < 0; }
 
 template<typename T,bool CW>
 bool in_convex_polygon(sf::Vector2<T> point,const std::vector<sf::Vector2<T>>& convex_poly)

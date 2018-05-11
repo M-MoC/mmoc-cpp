@@ -93,7 +93,7 @@ int main()
 		std::vector<sf::Vector2f> pure_poly;
 		for(int i=0;i<static_convex_poly.getPointCount();++i)
 			pure_poly.push_back(convex_poly.getTransform()*convex_poly.getPoint(i));
-		if(mmoc::in_convex_polygon<float,false>(mouse_pos,pure_poly))
+		if(mmoc::in_convex_polygon<float,true>(mouse_pos,pure_poly))
 			convex_poly.setFillColor(sf::Color(31,63,31));
 		else convex_poly.setFillColor(sf::Color(31,31,31));
 		
