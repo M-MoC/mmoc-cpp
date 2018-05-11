@@ -119,6 +119,12 @@ int main()
 		if(mmoc::point_on_left(mouse_pos,sf::Vector2f(),sf::Vector2f(coordsys.y_basis())))
 			new_title+="cursor on left of y axis";
 		else new_title+="cursor on right of y axis";
+		if(mmoc::point_on_left(sf::Vector2f(2.f,1.f),sf::Vector2f(),sf::Vector2f(1.f,1.f)))
+			new_title+="; true";
+		else new_title+="; false";
+		if(!mmoc::point_on_left(sf::Vector2f(1.f,2.f),sf::Vector2f(),sf::Vector2f(1.f,1.f)))
+			new_title+="; true";
+		else new_title+="; false";
 		window.setTitle(new_title);
 		
 		//y basis
