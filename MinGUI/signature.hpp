@@ -19,7 +19,6 @@ std::string signature(std::type_index type_id)
 	#endif
 	return tname;
 }
-
 template<typename T> std::string signature()
 	{ return signature(std::type_index(typeid(T))); }
 

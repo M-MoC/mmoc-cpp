@@ -9,19 +9,29 @@
 #include "throw.hpp"
 
 #define mmocSETFUNC(ObjectType,NewValueType) \
-	[](void* mmoc_arg__obj,const void* mmoc_arg__new_val)->void \
+	[](void* mmocarg__obj,const void* mmocarg__new_val)->void \
 	{ \
-		ObjectType* obj=reinterpret_cast<ObjectType*>(mmoc_arg__obj); \
-		const NewValueType* new_val=reinterpret_cast<const NewValueType*>(mmoc_arg__new_val);
-		//[code for set function would go here, followed by "mmocEND" to end the function]
+		ObjectType* obj=reinterpret_cast<ObjectType*>(mmocarg__obj); \
+		const NewValueType* new_val=reinterpret_cast<const NewValueType*>(mmocarg__new_val);
+		//[the code for set function would go after the use of the macro,
+		//followed by "mmocEND" to end the function]
+		//  explanation:
+		//obj is a pointer to whatever object is pointed to in the Any - it can be used to do
+		//something with that object; new_val is a pointer to what the Any is being assigned to
 
 #define mmocGETFUNC(ObjectType,T) \
-	[](char* mmoc_arg__ret_by_val,const void** mmoc_arg__ret_ptr_ptr,void* mmoc_arg__obj)->void \
+	[](char* mmocarg__ret_by_val_ptr,const void** mmocarg__ret_ptr_ptr,void* mmocarg__obj)->void \
 	{ \
-		const ObjectType* obj=reinterpret_cast<const ObjectType*>(mmoc_arg__obj); \
-		T* const ret_by_val=reinterpret_cast<T*>(mmoc_arg__ret_by_val); \
-		const T*& ret_ptr=*reinterpret_cast<const T**>(mmoc_arg__ret_ptr_ptr);
-		//[code for get function would go here, followed by "mmocEND" to end the function]
+		const ObjectType* obj=reinterpret_cast<const ObjectType*>(mmocarg__obj); \
+		T* const ret_by_val=reinterpret_cast<T*>(mmocarg__ret_by_val_ptr); \
+		const T*& ret_ptr=*reinterpret_cast<const T**>(mmocarg__ret_ptr_ptr);
+		//[the code for get function would go after the use of the macro,
+		//followed by "mmocEND" to end the function]
+		//  explanation:
+		//*ret_by_val is assigned to the value that's intended to be returned by value, while
+		//ret_ptr is assigned to a pointer pointing to the return value; this is useful if you
+		//don't want to copy the value and/or want to allow 'fresh' access to the value
+		//without having to call the get function again
 
 //so that code editors don't get confused by a seeming lack of an open bracket
 #define mmocEND }
@@ -37,6 +47,7 @@ struct TypeConflictException : std::runtime_error
 
 struct AttrList;
 
+// DESCRIPTION NEEDS UPDATING
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Any class which can either be used to store any type of data or to act as a proxy to external
 // data which it does not own. Data can be retrieved or assigned via get_by_ref(), get_by_cref(),
@@ -55,9 +66,13 @@ class Any
 	{
 		void (* assign_func)(Any&,const Any&);
 		void (* delete_func)(Any&);
+		void* (* heap_alloc)(void*);
 		std::type_index type_id;
-		bool owns_data;
-		RTTI(std::type_index type_id_in,bool owns_data_in)
+		//0 = does not own data (is a proxy)
+		//1 = owns data and data is (small enough to be) embedded
+		//2 = owns data and data is not (small enough to be) embedded
+		char owns_data;
+		RTTI(std::type_index type_id_in,char owns_data_in)
 			: type_id(type_id_in), owns_data(owns_data_in) {}
 	};
 	RTTI* rtti;
@@ -121,6 +136,7 @@ public:
 		
 		//there's only something to delete if the Any owns data
 		if(OwnsData)
+		{
 			rtti->delete_func=[](Any& to_delete)
 			{
 				//is this really safe? must investigate
@@ -129,7 +145,22 @@ public:
 					) -> ~T()
 					;
 			};
-		else rtti->delete_func=[](Any& to_delete){};
+		} else rtti->delete_func=[](Any& to_delete){};
+		
+		//0 = does not own data (is a proxy)
+		//1 = owns data and data is (small enough to be) embedded
+		//2 = owns data and data is not (small enough to be) embedded
+		if(OwnsData)
+			if(sizeof(T)<=sizeof(Proxy))
+				rtti->owns_data=1;
+			else
+			{
+				rtti->owns_data=2;
+				rtti->heap_alloc=[](void* value)-> void*
+					{ return new T(*reinterpret_cast<T*>(value)); }
+					;
+			}
+		else rtti->owns_data=0;
 		
 		//prevent redundant repeated initialisations of the RTTI instance ("rtti") and
 		//return its address (by first dereferencing it and then getting its address
@@ -140,11 +171,37 @@ public:
 	//default constructor only provided for use by containers for which
 	//their type need be default constructible (it should not be used)
 	Any() : rtti(nullptr) {}
-	//destructor needs to call destructor of any stored objects (if any)
+	//Any's destructor needs to call destructor of any owned object
+	//(if Any is a proxy/does not own an object, delete_func does nothing)
 	~Any()
 		{ rtti->delete_func(*this); }
+	Any(const Any& other)
+	{
+		rtti=other.rtti;
+		data=other.data;
+		if(other.rtti->owns_data==2)
+			data.data_ptr=other.rtti->heap_alloc(other.data.data_ptr);
+	}
+	Any& operator= (const Any& other)
+	{
+		rtti=other.rtti;
+		data=other.data;
+		if(other.rtti->owns_data==2)
+			data.data_ptr=other.rtti->heap_alloc(other.data.data_ptr);
+	}
+	Any(Any&&) = default;
+	Any& operator= (Any&&) = default;
 	
 	//Any creation functions
+	template<typename T> static Any create_from_data(T&& data_in)
+	{
+		Any to_return;
+		to_return.rtti=get_RTTI<T,true>();
+		if(sizeof(T)<=sizeof(Proxy))
+			*reinterpret_cast<T*>(to_return.data.embedded_data)=data_in;
+		else to_return.data.data_ptr=new T(data_in);
+		return to_return;
+	}
 	template<typename T> static Any create_from_data(const T& data_in)
 	{
 		Any to_return;
@@ -178,8 +235,7 @@ public:
 		return to_return;
 	}
 	
-	//functions for getting and setting data
-	
+	//// functions for getting and setting data ////
 	//only use get_by_ref() if Any is not a proxy which returns by value
 	template<typename T> const T& get_by_ref() const
 	{
@@ -250,14 +306,33 @@ public:
 		return *this;
 	}
 	
-	//informational functions
+	//// functions for proxy checking, setting and getting ////
+	template<typename Object> bool proxies(const Object& object_in) const
+		{ return data.proxy.object==reinterpret_cast<void*>(object_in); }
+	bool proxies_same_as(const Any& other) const
+		{ return data.proxy.object==other.data.proxy.object; }
+	//for the below three functions, you MUST make sure that the type Object or the type
+	//pointed to by object_in is of the same type as the originally proxied object or
+	//the behaviour is undefined
+	Any& set_proxy(void* object_in)
+		{ data.proxy.object=object_in; return *this; }
+	template<typename Object> Object* get_proxy()
+		{ return reinterpret_cast<Object*>(data.proxy.object); }
+	template<typename Object> const Object* get_proxy() const
+		{ return reinterpret_cast<const Object*>(data.proxy.object); }
+	template<typename Object> const Object* cget_proxy() const
+		{ return reinterpret_cast<const Object*>(data.proxy.object); }
+	
+	//// type-informational functions ////
 	std::type_index get_type_index() const
 		{ return rtti->type_id; }
 	std::string get_type_name() const
 		{ return mmoc::signature(rtti->type_id); }
 	template<typename T> bool is() const
 		{ return std::type_index(typeid(T))==rtti->type_id; }
-	bool owns_data() const
+	bool is_same_type_as(const Any& other) const
+		{ return rtti->type_id==other.rtti->type_id; }
+	char owns_data() const
 		{ return rtti->owns_data; }
 };
 

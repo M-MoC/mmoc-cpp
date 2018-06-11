@@ -126,7 +126,7 @@ int main()
 	
 	//checking .assign_to()
 	a_int_1.assign_to(a_int_2);
-	a_big_1.assign_to(a_big_2); //14 + 18 = 32
+	a_big_1.assign_to(a_big_2);
 	a_autoproxy_1.assign_to(a_autoproxy_2);
 	a_customproxy_1.assign_to(a_customproxy_2); //-14 + -18 = -32
 	a_customproxy_2.assign_to(a_customproxy_3); //-18 + 22 = 4
@@ -135,7 +135,7 @@ int main()
 	std::cout
 		<<a_int_1.get_by_val<int>()<<" = 20\n"
 		<<a_int_2.get_by_ref<int>()<<" = 20\n"
-		<<a_big_1.get_by_val<BigThing>().get_component()<<" = 32\n"
+		<<a_big_1.get_by_val<BigThing>().get_component()<<" = 18\n"
 		<<a_big_2.get_by_ref<BigThing>().get_component()<<" = 18\n"
 		<<proxied_int_1<<" = 220\n"
 		<<a_autoproxy_1.get_by_val<int>()<<" = 220\n"
@@ -173,25 +173,104 @@ int main()
 	//printing out the information for all the Any's tested
 	std::cout
 		<<"a_int_1.get_type_name() = "<<a_int_1.get_type_name()
-			<<", owns_data = "<<a_int_1.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_int_1.owns_data()<<"\n"
 		<<"a_int_2.get_type_name() = "<<a_int_2.get_type_name()
-			<<", owns_data = "<<a_int_2.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_int_2.owns_data()<<"\n"
 		<<"a_big_1.get_type_name() = "<<a_big_1.get_type_name()
-			<<", owns_data = "<<a_big_1.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_big_1.owns_data()<<"\n"
 		<<"a_big_2.get_type_name() = "<<a_big_2.get_type_name()
-			<<", owns_data = "<<a_big_2.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_big_2.owns_data()<<"\n"
 		<<"a_autoproxy_1.get_type_name() = "<<a_autoproxy_1.get_type_name()
-			<<", owns_data = "<<a_autoproxy_1.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_autoproxy_1.owns_data()<<"\n"
 		<<"a_autoproxy_2.get_type_name() = "<<a_autoproxy_2.get_type_name()
-			<<", owns_data = "<<a_autoproxy_2.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_autoproxy_2.owns_data()<<"\n"
 		<<"a_customproxy_1.get_type_name() = "<<a_customproxy_1.get_type_name()
-			<<", owns_data = "<<a_customproxy_1.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_customproxy_1.owns_data()<<"\n"
 		<<"a_customproxy_2.get_type_name() = "<<a_customproxy_2.get_type_name()
-			<<", owns_data = "<<a_customproxy_2.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_customproxy_2.owns_data()<<"\n"
 		<<"a_big_3.get_type_name() = "<<a_big_3.get_type_name()
-			<<", owns_data = "<<a_big_3.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_big_3.owns_data()<<"\n"
 		<<"a_customproxy_3.get_type_name() = "<<a_customproxy_3.get_type_name()
-			<<", owns_data = "<<a_customproxy_3.owns_data()<<"\n"
+			<<", owns_data = "<<(int)a_customproxy_3.owns_data()<<"\n"
+		"\n"
+		;
+	
+	mmoc::Any
+		copied_int=a_int_1, //20
+		copied_big=a_big_1, //18
+		copied_autoproxy=a_autoproxy_1, //1234
+		copied_customproxy=a_customproxy_1 //-32
+		;
+	
+	std::cout
+		<<"copied_int.get_by_val<int>() => "
+			<<copied_int.get_by_val<int>()<<" = 20\n"
+		<<"copied_big.get_by_ref<BigThing>().get_component() => "
+			<<copied_big.get_by_ref<BigThing>().get_component()<<" = 18\n"
+		<<"copied_autoproxy.get_by_val<int>() => "
+			<<copied_autoproxy.get_by_val<int>()<<" = 1234\n"
+		<<"copied_customproxy.get_by_val<int64_t>() => "
+			<<copied_customproxy.get_by_val<int64_t>()<<" = -32\n"
+		"\n"
+		;
+	
+	copied_int.set<int>(copied_int.get_by_val<int>()/2); //20/2=10
+	for(int i=0;i<5;++i)
+		//before: 18, after: 5*10/2=5*5=25
+		copied_big.get_by_ref<BigThing>().set_component(copied_int.get_by_val<int>()/2,i);
+	//1234*2=2468, however proxy is not changed so it applies to original too
+	copied_autoproxy.set<int>(copied_autoproxy.get_by_val<int>()*2);
+	copied_customproxy.set<int64_t>(proxied_big_thing_1.get_component(0)+8); //-32+8=-24
+	
+	std::cout
+		<<a_int_1.get_by_val<int>()<<" = 20\n"
+		<<"copied_int.get_by_val<int>() => "
+			<<copied_int.get_by_val<int>()<<" = 10\n"
+		
+		<<a_big_1.get_by_ref<BigThing>().get_component()<<" = 18\n"
+		<<"copied_big.get_by_ref<BigThing>().get_component() => "
+			<<copied_big.get_by_ref<BigThing>().get_component()<<" = 25\n"
+		
+		<<a_autoproxy_1.get_by_val<int>()<<" = 2468 "
+			"(proxy is not changed so it applies to original too)\n"
+		<<"copied_autoproxy.get_by_val<int>() => "
+			<<copied_autoproxy.get_by_val<int>()<<" = 2468\n" //proxy is not changed so it applies to original too
+		
+		<<a_customproxy_1.get_by_val<int64_t>()<<" = -24 "
+			"(proxy is not changed so it applies to original too)\n"
+		<<"copied_customproxy.get_by_val<int64_t>() => "
+			<<copied_customproxy.get_by_val<int64_t>()<<" = -24\n"
+		
+		"\n"
+		
+		<<"copied_autoproxy.proxies_same_as(a_autoproxy_1) => "
+			<<copied_autoproxy.proxies_same_as(a_autoproxy_1)<<" = 1\n"
+		<<"copied_int.proxies_same_as(a_int_2) => "
+			<<copied_int.proxies_same_as(a_int_2)<<" = 0\n"
+		<<"a_int_1.is_same_type_as(a_autoproxy_2) => "
+			<<a_int_1.is_same_type_as(a_autoproxy_2)<<" = 1\n"
+		<<"copied_big.is_same_type_as(a_big_2) => "
+			<<copied_big.is_same_type_as(a_big_2)<<" = 1\n"
+		;
+	int new_int_to_proxy=1;
+	copied_autoproxy.set_proxy(&new_int_to_proxy);
+	std::cout
+		<<"copied_autoproxy.get_by_val<int>() => "
+			<<copied_autoproxy.get_by_val<int>()<<" = 1\n"
+		;
+	copied_autoproxy.set<int>(12);
+	std::cout
+		<<"copied_autoproxy.get_by_val<int>() => "
+			<<copied_autoproxy.get_by_val<int>()<<" = 12\n"
+		<<"a_autoproxy_1.get_by_val<int>() => "
+			<<a_autoproxy_1.get_by_val<int>()<<" = 2468\n"
+		<<"copied_autoproxy.proxies_same_as(a_autoproxy_1) => "
+			<<copied_autoproxy.proxies_same_as(a_autoproxy_1)<<" = 0\n"
+		<<"copied_autoproxy.get_proxy<int>()==&new_int_to_proxy => "
+			<<(copied_autoproxy.get_proxy<int>()==&new_int_to_proxy)<<" = 1\n"
+		<<"copied_autoproxy.get_proxy<void>()==(void*)&new_int_to_proxy => "
+			<<(copied_autoproxy.get_proxy<void>()==(void*)&new_int_to_proxy)
+			<<" = 1\n"
 		"\n"
 		;
 	
