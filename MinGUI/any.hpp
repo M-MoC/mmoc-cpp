@@ -309,17 +309,21 @@ public:
 	//// functions for proxy checking, setting and getting ////
 	template<typename Object> bool proxies(const Object& object_in) const
 		{ return data.proxy.object==reinterpret_cast<void*>(object_in); }
-	bool proxies_same_as(const Any& other) const
-		{ return data.proxy.object==other.data.proxy.object; }
-	//for the below three functions, you MUST make sure that the type Object or the type
-	//pointed to by object_in is of the same type as the originally proxied object or
-	//the behaviour is undefined
+	// For the below templated functions, you MUST make sure that the type Object or the type
+	// pointed to by object_in is of the same type as the originally proxied object or the
+	// behaviour is undefined. The behaviour is ALSO undefined if it is not a proxy.
 	Any& set_proxy(void* object_in)
 		{ data.proxy.object=object_in; return *this; }
+	void* get_proxy()
+		{ return data.proxy.object; }
 	template<typename Object> Object* get_proxy()
 		{ return reinterpret_cast<Object*>(data.proxy.object); }
+	const void* get_proxy() const
+		{ return data.proxy.object; }
 	template<typename Object> const Object* get_proxy() const
 		{ return reinterpret_cast<const Object*>(data.proxy.object); }
+	const void* cget_proxy() const
+		{ return data.proxy.object; }
 	template<typename Object> const Object* cget_proxy() const
 		{ return reinterpret_cast<const Object*>(data.proxy.object); }
 	
