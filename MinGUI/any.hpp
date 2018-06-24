@@ -309,23 +309,46 @@ public:
 	//// functions for proxy checking, setting and getting ////
 	template<typename Object> bool proxies(const Object& object_in) const
 		{ return data.proxy.object==reinterpret_cast<void*>(object_in); }
+	bool proxies_same_as(const mmoc::Any& other) const
+		{ return data.proxy.object==other.data.proxy.object; }
 	// For the below templated functions, you MUST make sure that the type Object or the type
 	// pointed to by object_in is of the same type as the originally proxied object or the
 	// behaviour is undefined. The behaviour is ALSO undefined if it is not a proxy.
+	template<typename T> T* get_proxy()
+	{
+		if(owns_data())
+			mmocTHROW( std::domain_error,
+				"getting proxy of Any when it is not a proxy (it owns data)"
+				);
+		return reinterpret_cast<T*>(data.proxy.object);
+	}
+	template<typename T> const T* get_cproxy()
+	{
+		if(owns_data())
+			mmocTHROW( std::domain_error,
+				"getting proxy of Any when it is not a proxy (it owns data)"
+				);
+		return reinterpret_cast<const T*>(data.proxy.object);
+	}
+	
 	Any& set_proxy(void* object_in)
-		{ data.proxy.object=object_in; return *this; }
-	void* get_proxy()
-		{ return data.proxy.object; }
-	template<typename Object> Object* get_proxy()
-		{ return reinterpret_cast<Object*>(data.proxy.object); }
-	const void* get_proxy() const
-		{ return data.proxy.object; }
-	template<typename Object> const Object* get_proxy() const
-		{ return reinterpret_cast<const Object*>(data.proxy.object); }
-	const void* cget_proxy() const
-		{ return data.proxy.object; }
-	template<typename Object> const Object* cget_proxy() const
-		{ return reinterpret_cast<const Object*>(data.proxy.object); }
+	{
+		if(owns_data())
+			mmocTHROW( std::domain_error,
+				"setting raw proxy of Any when it is not a proxy (it owns data)"
+				);
+		data.proxy.object=object_in; return *this;
+	}
+	
+	void* raw_data_ptr()
+	{
+		return owns_data()==2 ?
+				data.data_ptr
+			: owns_data()==1 ?
+				data.embedded_data
+			: data.proxy.object
+			;
+	}
 	
 	//// type-informational functions ////
 	std::type_index get_type_index() const
