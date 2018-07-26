@@ -1,4 +1,2 @@
-The EIGA project has been temporarily suspended due to continued difficulties and complications in the design process and as a result a lack of progress towards creating an actual GUI.
-This does not mean that I will not work on this project again; I may pick it up again at some later point when I've figured out a sufficient design that doesn't lead into problems in respect to the design goals.
-Instead, I will be creating a minimalistic GUI for my own use that does not aim to have the same flexibility or extendability (except in the sense of being able to add to or rewrite the code itself, of course).
-The name of this minimalistic GUI project will be "MinGUI", and I will put everything for said project in a folder named as such within the EIGA directory, hence the new folder named "MinGUI" and various files that will be used for it being moved to it.
+The EIGA project has been temporarily suspended due to continued difficulties and complications in the design process and a resulting lack of progress towards creating an actual GUI.
+Instead, I'll be creating a minimalistic GUI ("MinGUI") that only aims partly to fulfill the design goals of EIGA and that could potentially be evolved into EIGA and used as a conceptual sounding board for the design of EIGA.
